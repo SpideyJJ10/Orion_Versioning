@@ -1,0 +1,132 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Orion POS — Theme tokens
+ * Soporta theming dinámico por tenant: el componente <BrandingProvider />
+ * sobrescribe en runtime --primary y --primary-foreground en :root.
+ */
+@layer base {
+  :root {
+    /* Neutrales */
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+
+    /* Marca: Orion violeta/fuchsia (#7c3aed) */
+    --primary: 262 83% 58%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 240 5% 96%;
+    --secondary-foreground: 240 10% 3.9%;
+    --accent: 293 69% 49%;          /* fuchsia-600 vivo */
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 98%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 240 5.9% 10%;
+    --ring: 262 83% 58%;
+
+    --radius: 0.625rem;
+
+    --font-sans: "Inter", "Segoe UI", system-ui, sans-serif;
+  }
+
+  .dark {
+    /* Fondo violeta profundo obsidian (#0a0512) */
+    --background: 273 20% 6%;
+    --foreground: 0 0% 98%;
+    --card: 273 15% 10%;
+    --card-foreground: 0 0% 98%;
+    --popover: 273 15% 9%;
+    --popover-foreground: 0 0% 98%;
+    --muted: 273 15% 16%;
+    --muted-foreground: 273 10% 70%;
+    --border: 273 15% 16%;
+    --input: 273 15% 16%;
+
+    /* Violeta Orion más claro para lectura sobre fondo oscuro (#9333ea) */
+    --primary: 271 91% 65%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 273 15% 16%;
+    --secondary-foreground: 0 0% 98%;
+    --accent: 293 90% 65%;
+    --accent-foreground: 273 20% 6%;
+    --destructive: 0 62.8% 50%;
+    --destructive-foreground: 0 0% 98%;
+    --success: 142 70% 45%;
+    --success-foreground: 0 0% 98%;
+    --warning: 38 92% 60%;
+    --warning-foreground: 240 10% 3.9%;
+    --ring: 271 91% 65%;
+  }
+
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+/* Scrollbar más sutil */
+@layer base {
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted));
+    border-radius: 5px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.4);
+  }
+}
+
+/* Utilidades comunes */
+@layer utilities {
+  .glass {
+    background: hsl(var(--card) / 0.6);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+
+  .gradient-orion {
+    background: linear-gradient(
+      135deg,
+      hsl(var(--primary)) 0%,
+      hsl(var(--primary) / 0.7) 100%
+    );
+  }
+}
+
+/*
+ * Recibo imprimible: cuando el usuario hace `window.print()` desde
+ * `<ReceiptDialog />`, ocultamos todo excepto `#orion-print-area` y lo
+ * centramos en una hoja de 80mm. Esto permite usar la misma vista para
+ * preview y para imprimir en una térmica POS estándar.
+ */
+@media print {
+  body * { visibility: hidden !important; }
+  #orion-print-area, #orion-print-area * { visibility: visible !important; }
+  #orion-print-area {
+    position: absolute;
+    left: 0; top: 0;
+    width: 80mm;
+    padding: 4mm;
+    background: white;
+    color: black;
+  }
+  @page { size: 80mm auto; margin: 0; }
+}

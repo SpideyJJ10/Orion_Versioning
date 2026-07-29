@@ -1,0 +1,14 @@
+# ── Machine Learning dependencies (Phase 2) ────────────────────────────
+# Installed only on the cron worker that trains models, NOT on the API instance.
+# Keep these pinned to versions known to install cleanly on Linux + Python 3.11.
+#
+# Usage:
+#   pip install -r requirements.txt
+#   pip install -r requirements-ml.txt
+#
+prophet>=1.1.5
+pandas>=2.0.0
+numpy>=1.24.0
+scikit-learn>=1.3.0
+joblib>=1.3.0
+holidays>=0.45

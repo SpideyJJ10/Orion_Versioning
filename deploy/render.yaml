@@ -1,0 +1,79 @@
+# Render Blueprint — Orion POS backend topology.
+#
+# Frontend (web/) is deployed on **Vercel** — see docs/DEPLOYMENT.md and
+# web/vercel.json. This blueprint covers ONLY the FastAPI backend and Postgres.
+#
+# DO NOT auto-apply this to production. Import via the Render Dashboard
+# (https://dashboard.render.com/blueprints) and review every service before
+# clicking "Apply Blueprint". The existing prod web service `orion-pos`
+# (id: srv-d7m8pt1j2pic7391a1lg) is intentionally NOT redefined here — keep
+# it under manual control until we've validated staging end-to-end.
+#
+# Topology (target):
+#   main     →  orion-pos          (prod backend  · already exists, keep)
+#   develop  →  orion-pos-staging  (staging backend, defined below)
+#
+# Postgres:
+#   prod    : orion-postgres            (existing)
+#   staging : orion-postgres-staging    (free tier, defined below)
+#
+# Pre-deploy: Alembic migrations run automatically before traffic flips.
+#   See `preDeployCommand` below — Render runs it after build, before health
+#   checks. If the migration fails, the new instance is rejected and the old
+#   one keeps serving traffic. Rollback is automatic.
+
+databases:
+  - name: orion-postgres-staging
+    plan: free
+    databaseName: orion_staging
+    region: oregon
+    postgresMajorVersion: "16"
+
+services:
+  # ───────────────────────────────────────────────────────────────────
+  # STAGING BACKEND  (auto-deploys on every push to `develop`)
+  # ───────────────────────────────────────────────────────────────────
+  - type: web
+    name: orion-pos-staging
+    runtime: python
+    region: oregon
+    plan: free
+    branch: develop
+    autoDeploy: true
+    rootDir: .
+    buildCommand: pip install -r requirements.txt
+    preDeployCommand: alembic upgrade head
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT --proxy-headers
+    healthCheckPath: /api/health
+    envVars:
+      - key: ENV
+        value: staging
+      - key: LOG_LEVEL
+        value: INFO
+      - key: DATABASE_URL
+        fromDatabase:
+          name: orion-postgres-staging
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: CORS_ORIGINS
+        # Staging Vercel deployment alias + main staging domain.
+        value: https://staging-orion-pos.vercel.app
+      - key: CORS_ORIGIN_REGEX
+        # Allow every Vercel preview under the `orion-pos` project, for
+        # PR-driven QA without manual CORS edits.
+        value: ^https://orion-pos-.*\.vercel\.app$
+      - key: RATE_LIMIT_DEFAULT
+        value: 200/minute
+      - key: RATE_LIMIT_LOGIN
+        value: 10/minute
+      - key: LOGIN_MAX_FAILURES
+        value: "5"
+      - key: LOGIN_WINDOW_SECONDS
+        value: "300"
+      - key: LOGIN_LOCKOUT_SECONDS
+        value: "900"
+      # Set ADMIN_EMAIL / ADMIN_PASSWORD / ADMIN_PIN in the dashboard manually.
+      # Set SENTRY_DSN in the dashboard manually (project: orion-backend-staging).
+      - key: SENTRY_TRACES_SAMPLE_RATE
+        value: "0.2"

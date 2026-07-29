@@ -1,0 +1,35 @@
+fastapi>=0.100.0
+uvicorn[standard]>=0.22.0
+sqlalchemy>=2.0.0
+alembic>=1.13.0
+python-dotenv>=1.0.0
+pydantic>=2.0.0
+email-validator>=2.0.0
+python-jose[cryptography]>=3.3.0
+bcrypt>=4.0.0
+
+# PostgreSQL (production only — not needed for local SQLite dev)
+psycopg2-binary>=2.9.0
+
+# ── Security hardening (Vector 3 — opt-in via backend/core/security.py) ──
+# slowapi: rate limiting middleware (drop-in con Limiter compatible).
+# Si no se instala, backend/core/security.py degrada a no-op.
+slowapi>=0.1.9
+
+# ── Observability (opt-in via backend/core/sentry.py) ──
+# sentry-sdk: error tracking + performance. Activado si SENTRY_DSN está definido.
+# Si no se instala, init_sentry() degrada a no-op silencioso.
+sentry-sdk[fastapi]>=2.0.0
+
+# ── Testing ────────────────────────────────────────────────
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
+httpx>=0.27.0
+
+# ML dependencies live in requirements-ml.txt to keep the runtime image lean.
+# Install them separately on the cron worker that trains models.
+# AI extras (OCR + NLP) son opcionales: ver docs/AI_MODULES.md
+#   pip install pytesseract Pillow                    # módulo OCR
+#   pip install scikit-learn pandas numpy             # forecast Random Forest
+openai                                                # asistente NLP (gpt-4o-mini)
+stripe>=8.0.0

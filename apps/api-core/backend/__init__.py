@@ -1,0 +1,1 @@
+"""Tizón POS — backend FastAPI."""

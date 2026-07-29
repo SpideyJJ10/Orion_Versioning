@@ -1,0 +1,26 @@
+{
+  "name": "Orion",
+  "short_name": "Orion",
+  "description": "Gestión de negocio inteligente y facturación moderna — Orion Tech",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "lang": "es-CO",
+  "theme_color": "#1f4ed8",
+  "background_color": "#0a1633",
+  "icons": [
+    {
+      "src": "/orion-logo-mark.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/orion-logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

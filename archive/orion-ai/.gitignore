@@ -1,0 +1,64 @@
+# ─── Secrets & local env ──────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+credentials/
+
+# ─── Python ───────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+*.egg
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+bandit-report.json
+
+# ─── Database files ───────────────────────────────────────────────
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+*.sqbpro
+data/
+
+# ─── Logs ─────────────────────────────────────────────────────────
+logs/
+*.log
+
+# ─── Node / Next.js ───────────────────────────────────────────────
+node_modules/
+.next/
+out/
+build/
+dist/
+.turbo/
+.swc/
+.pnpm-store/
+*.tsbuildinfo
+next-env.d.ts.*
+
+# ─── Editor / IDE ─────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.windsurf/
+
+# ─── OS noise ─────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ─── Backups & one-shots ──────────────────────────────────────────
+*.bak
+*.orig
+*.rej

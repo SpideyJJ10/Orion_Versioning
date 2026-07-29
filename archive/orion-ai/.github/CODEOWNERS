@@ -1,0 +1,21 @@
+# CODEOWNERS — auto-assigns reviewers on PRs.
+# See https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-security/customizing-your-repository/about-code-owners
+#
+# Keep this short. Default reviewer is the repo owner; refine per area
+# as the team grows.
+
+* @JJ
+
+# Backend (FastAPI)
+backend/         @JJ
+
+# Web app (Next.js)
+web/             @JJ
+
+# Migrations / DB schema
+migrations/      @JJ
+
+# Documentation
+docs/            @JJ
+README.md        @JJ
+CHANGELOG.md     @JJ

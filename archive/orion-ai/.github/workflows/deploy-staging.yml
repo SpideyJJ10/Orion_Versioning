@@ -1,0 +1,75 @@
+name: Deploy Staging
+
+# Pipeline de staging del backend en Render.
+#
+# Trigger:
+#   - push a `develop` (auto)
+#   - workflow_dispatch (manual)
+#
+# El frontend (Vercel) se deploya solo desde su Git integration.
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  STAGING_API_URL: https://orion-pos-staging.onrender.com
+
+jobs:
+  deploy-backend:
+    name: Trigger Render staging deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Trigger Render deploy hook
+        env:
+          HOOK: ${{ secrets.RENDER_STAGING_BACKEND_HOOK }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "::warning::RENDER_STAGING_BACKEND_HOOK not configured — skipping."
+            echo "Render will still autoDeploy from Git, but this step is silent."
+            exit 0
+          fi
+          if curl -fsSL -X POST "$HOOK"; then
+            echo "✓ Deploy hook accepted"
+          else
+            echo "::warning::Render hook returned non-zero (may be deploying already)"
+          fi
+
+      - name: Wait for backend to be healthy (max 5 min)
+        run: |
+          echo "Waiting for $STAGING_API_URL/api/health to become ready…"
+          for i in $(seq 1 30); do
+            if curl -fsSL --max-time 10 "$STAGING_API_URL/api/health" 2>/dev/null | grep -q '"ok":true'; then
+              echo "✓ Backend healthy after ${i} attempts"
+              exit 0
+            fi
+            echo "  attempt $i/30 — not ready yet, sleeping 10s…"
+            sleep 10
+          done
+          echo "::warning::Backend did not respond ok=true within 5 minutes."
+          echo "Free tier may be cold-starting. Continuing…"
+
+  smoke-test:
+    name: Smoke test
+    runs-on: ubuntu-latest
+    needs: deploy-backend
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run smoke test
+        env:
+          API_URL:        ${{ env.STAGING_API_URL }}
+          SMOKE_EMAIL:    ${{ secrets.SMOKE_EMAIL_STAGING }}
+          SMOKE_PASSWORD: ${{ secrets.SMOKE_PASSWORD_STAGING }}
+        run: bash scripts/smoke_test.sh
