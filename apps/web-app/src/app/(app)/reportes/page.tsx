@@ -15,19 +15,32 @@ import {
   Tooltip,
   XAxis,
   YAxis,
+  Area,
+  AreaChart,
 } from "recharts";
-import { Banknote, ReceiptText, ShoppingBag, TrendingUp } from "lucide-react";
+import {
+  Banknote,
+  ReceiptText,
+  ShoppingBag,
+  TrendingUp,
+  Calendar,
+  Building2,
+  Printer,
+  Download,
+  Filter,
+} from "lucide-react";
 
 import {
   useReporteRango,
   useReporteDia,
   useSucursales,
 } from "@/lib/hooks/use-api";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -42,12 +55,12 @@ import {
   formatNumber,
 } from "@/lib/formatters";
 
-// Paleta para gráficas (consistente con tokens del tema).
-const COLORS = ["#1d4ed8", "#0ea5e9", "#10b981", "#f59e0b", "#ef4444", "#a855f7"];
+const COLORS = ["#7c3aed", "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#ec4899"];
 
 function isoToday(): string {
   return new Date().toISOString().slice(0, 10);
 }
+
 function isoDaysAgo(days: number): string {
   const d = new Date();
   d.setDate(d.getDate() - days);
@@ -61,23 +74,25 @@ export default function ReportesPage() {
 
   const [desde, setDesde] = useState(isoDaysAgo(30));
   const [hasta, setHasta] = useState(isoToday());
+  const [activeDays, setActiveDays] = useState<number>(30);
 
   const rangoQ = useReporteRango({
     desde,
     hasta,
     sucursal_id: effectiveSucursalId,
   });
+
   const diaQ = useReporteDia({
     sucursal_id: effectiveSucursalId ?? "",
-    fecha:       hasta,
+    fecha: hasta,
   });
 
   const setRange = (days: number) => {
+    setActiveDays(days);
     setHasta(isoToday());
     setDesde(isoDaysAgo(days));
   };
 
-  // Pie chart data → array {name, value}
   const metodosData = useMemo(() => {
     if (!rangoQ.data) return [];
     return Object.entries(rangoQ.data.por_metodo_pago)
@@ -86,166 +101,180 @@ export default function ReportesPage() {
   }, [rangoQ.data]);
 
   return (
-    <div className="space-y-4 p-6">
-      <header className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+    <div className="space-y-6 p-6 md:p-8 max-w-7xl mx-auto">
+      {/* Header */}
+      <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between border-b pb-5">
         <div>
-          <h1 className="text-2xl font-bold">Reportes</h1>
-          <p className="text-sm text-muted-foreground">
-            KPIs históricos + cierre de caja del día seleccionado.
+          <h1 className="text-3xl font-black tracking-tight">Reportes & Cierre</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Análisis de rendimiento comercial y control financiero.
           </p>
         </div>
-        {sucursales && sucursales.length > 1 && (
-          <Select value={effectiveSucursalId} onValueChange={setSucursalId}>
-            <SelectTrigger className="w-44">
-              <SelectValue placeholder="Sucursal" />
-            </SelectTrigger>
-            <SelectContent>
-              {sucursales.map((s) => (
-                <SelectItem key={s.id} value={s.id}>{s.nombre}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
+
+        <div className="flex items-center gap-3">
+          {sucursales && sucursales.length > 1 && (
+            <Select value={effectiveSucursalId} onValueChange={setSucursalId}>
+              <SelectTrigger className="w-48 h-11">
+                <Building2 className="mr-2 h-4 w-4 text-muted-foreground" />
+                <SelectValue placeholder="Sucursal" />
+              </SelectTrigger>
+              <SelectContent>
+                {sucursales.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.nombre}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
+          <Button variant="outline" size="lg" className="h-11" onClick={() => window.print()}>
+            <Printer className="mr-2 h-4 w-4" />
+            Imprimir
+          </Button>
+        </div>
       </header>
 
-      {/* Filtros de rango */}
+      {/* Rango de Fechas & Filtros Rápido */}
       <Card>
-        <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-end sm:gap-4">
-          <div className="space-y-1">
-            <Label className="text-xs">Desde</Label>
-            <Input
-              type="date"
-              value={desde}
-              max={hasta}
-              onChange={(e) => setDesde(e.target.value)}
-              className="w-44"
-            />
+        <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold text-muted-foreground">Desde</Label>
+              <Input
+                type="date"
+                value={desde}
+                max={hasta}
+                onChange={(e) => {
+                  setDesde(e.target.value);
+                  setActiveDays(0);
+                }}
+                className="w-40 h-10 font-medium"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold text-muted-foreground">Hasta</Label>
+              <Input
+                type="date"
+                value={hasta}
+                min={desde}
+                max={isoToday()}
+                onChange={(e) => {
+                  setHasta(e.target.value);
+                  setActiveDays(0);
+                }}
+                className="w-40 h-10 font-medium"
+              />
+            </div>
           </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Hasta</Label>
-            <Input
-              type="date"
-              value={hasta}
-              min={desde}
-              max={isoToday()}
-              onChange={(e) => setHasta(e.target.value)}
-              className="w-44"
-            />
-          </div>
-          <div className="flex flex-1 flex-wrap gap-1.5">
+
+          <div className="flex items-center gap-2 flex-wrap">
             {[7, 14, 30, 90].map((d) => (
               <Button
                 key={d}
                 size="sm"
-                variant="outline"
+                variant={activeDays === d ? "default" : "outline"}
                 onClick={() => setRange(d)}
-                className="h-8"
+                className={`h-9 px-3 text-xs font-bold ${activeDays === d ? "gradient-orion text-white" : ""}`}
               >
-                Últ. {d}d
+                {d} Días
               </Button>
             ))}
           </div>
         </CardContent>
       </Card>
 
-      {/* KPIs del rango */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {/* KPIs del Rango */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
           icon={Banknote}
-          label="Ventas"
+          label="Total Ventas"
           value={rangoQ.data ? formatCurrency(rangoQ.data.total_ventas) : "—"}
           loading={rangoQ.isLoading}
           accent="primary"
         />
         <KpiCard
           icon={ReceiptText}
-          label="Órdenes"
+          label="Total Órdenes"
           value={rangoQ.data ? formatNumber(rangoQ.data.total_ordenes) : "—"}
           loading={rangoQ.isLoading}
         />
         <KpiCard
           icon={TrendingUp}
-          label="Ticket promedio"
+          label="Ticket Promedio"
           value={rangoQ.data ? formatCurrency(rangoQ.data.ticket_promedio) : "—"}
           loading={rangoQ.isLoading}
         />
         <KpiCard
           icon={ShoppingBag}
-          label="Items vendidos"
+          label="Items Despachados"
           value={rangoQ.data ? formatNumber(rangoQ.data.total_items, 1) : "—"}
           loading={rangoQ.isLoading}
         />
       </div>
 
-      {/* Charts */}
-      <div className="grid gap-4 lg:grid-cols-3">
-        {/* Serie diaria */}
+      {/* Gráficos de Tendencia & Pagos */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Serie Diaria */}
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle className="text-base">Ventas por día</CardTitle>
+            <CardTitle className="text-lg font-bold">Evolución de Ventas</CardTitle>
+            <CardDescription>Ingresos vs Órdenes en el período seleccionado</CardDescription>
           </CardHeader>
-          <CardContent className="h-72 pt-2">
+          <CardContent className="h-80 pt-2">
             {rangoQ.isLoading ? (
-              <Skeleton className="h-full w-full" />
+              <Skeleton className="h-full w-full rounded-xl" />
             ) : !rangoQ.data || rangoQ.data.serie_diaria.length === 0 ? (
-              <EmptyChart label="Sin datos en el rango" />
+              <EmptyState label="Sin datos en el rango seleccionado" />
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart
+                <AreaChart
                   data={rangoQ.data.serie_diaria.map((p) => ({
                     fecha: formatDate(p.fecha),
                     Ventas: p.total_ventas,
                     Órdenes: p.total_ordenes,
                   }))}
-                  margin={{ top: 5, right: 10, left: 0, bottom: 0 }}
+                  margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
                 >
+                  <defs>
+                    <linearGradient id="ventasGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
+                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.0} />
+                    </linearGradient>
+                  </defs>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis dataKey="fecha" className="text-[10px]" />
-                  <YAxis
-                    yAxisId="left"
-                    className="text-[10px]"
-                    tickFormatter={(v) => formatNumber(v / 1000, 0) + "k"}
-                  />
-                  <YAxis yAxisId="right" orientation="right" className="text-[10px]" />
+                  <XAxis dataKey="fecha" className="text-xs" />
+                  <YAxis className="text-xs" tickFormatter={(v) => formatNumber(v / 1000, 0) + "k"} />
                   <Tooltip
                     formatter={(v: number, name) =>
                       name === "Ventas" ? formatCurrency(v) : formatNumber(v)
                     }
                   />
-                  <Legend />
-                  <Line
-                    yAxisId="left"
+                  <Area
                     type="monotone"
                     dataKey="Ventas"
                     stroke="hsl(var(--primary))"
-                    strokeWidth={2.5}
-                    dot={false}
+                    strokeWidth={3}
+                    fillOpacity={1}
+                    fill="url(#ventasGradient)"
                   />
-                  <Line
-                    yAxisId="right"
-                    type="monotone"
-                    dataKey="Órdenes"
-                    stroke="hsl(var(--accent))"
-                    strokeWidth={2}
-                    strokeDasharray="4 2"
-                    dot={false}
-                  />
-                </LineChart>
+                </AreaChart>
               </ResponsiveContainer>
             )}
           </CardContent>
         </Card>
 
-        {/* Por método */}
+        {/* Métodos de Pago */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Pagos por método</CardTitle>
+            <CardTitle className="text-lg font-bold">Distribución de Pagos</CardTitle>
+            <CardDescription>Participación por canal de cobro</CardDescription>
           </CardHeader>
-          <CardContent className="h-72">
+          <CardContent className="h-80">
             {rangoQ.isLoading ? (
-              <Skeleton className="h-full w-full" />
+              <Skeleton className="h-full w-full rounded-xl" />
             ) : metodosData.length === 0 ? (
-              <EmptyChart label="Sin pagos registrados" />
+              <EmptyState label="Sin pagos registrados" />
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -253,9 +282,9 @@ export default function ReportesPage() {
                     data={metodosData}
                     dataKey="value"
                     nameKey="name"
-                    innerRadius={50}
+                    innerRadius={55}
                     outerRadius={85}
-                    paddingAngle={2}
+                    paddingAngle={4}
                   >
                     {metodosData.map((_, i) => (
                       <Cell key={i} fill={COLORS[i % COLORS.length]} />
@@ -270,93 +299,93 @@ export default function ReportesPage() {
         </Card>
       </div>
 
-      {/* Top productos */}
+      {/* Top Productos del Rango */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Top productos del rango</CardTitle>
+          <CardTitle className="text-lg font-bold">Top Productos por Ventas</CardTitle>
+          <CardDescription>Los artículos con mayor generación de ingresos</CardDescription>
         </CardHeader>
         <CardContent className="h-80 pt-2">
           {rangoQ.isLoading ? (
-            <Skeleton className="h-full w-full" />
+            <Skeleton className="h-full w-full rounded-xl" />
           ) : !rangoQ.data?.top_productos.length ? (
-            <EmptyChart label="Sin ventas en el rango" />
+            <EmptyState label="Sin ventas registradas en el rango" />
           ) : (
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={rangoQ.data.top_productos.slice(0, 8).map((p) => ({
-                  nombre:    p.nombre.length > 18 ? p.nombre.slice(0, 17) + "…" : p.nombre,
-                  Ingresos:  p.total,
-                  Cantidad:  p.cantidad,
+                  nombre: p.nombre.length > 20 ? p.nombre.slice(0, 19) + "…" : p.nombre,
+                  Ingresos: p.total,
+                  Cantidad: p.cantidad,
                 }))}
                 layout="vertical"
-                margin={{ top: 5, right: 16, left: 16, bottom: 0 }}
+                margin={{ top: 5, right: 20, left: 20, bottom: 0 }}
               >
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis
-                  type="number"
-                  className="text-[10px]"
-                  tickFormatter={(v) => formatNumber(v / 1000, 0) + "k"}
-                />
-                <YAxis
-                  type="category"
-                  dataKey="nombre"
-                  width={120}
-                  className="text-[10px]"
-                />
+                <XAxis type="number" className="text-xs" tickFormatter={(v) => formatNumber(v / 1000, 0) + "k"} />
+                <YAxis type="category" dataKey="nombre" width={130} className="text-xs font-semibold" />
                 <Tooltip formatter={(v: number) => formatCurrency(v)} />
-                <Bar dataKey="Ingresos" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+                <Bar dataKey="Ingresos" fill="hsl(var(--primary))" radius={[0, 6, 6, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}
         </CardContent>
       </Card>
 
-      {/* Cierre de caja */}
-      <Card>
+      {/* Cierre de Caja del Día */}
+      <Card id="orion-print-area">
         <CardHeader>
-          <CardTitle className="text-base">
-            Cierre de caja · {formatDate(hasta)}
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-xl font-black">Cierre de Caja del Día</CardTitle>
+              <CardDescription>Resumen financiero al {formatDate(hasta)}</CardDescription>
+            </div>
+            <Badge variant="outline" className="text-xs font-bold border-primary text-primary">
+              Cierre Cuadrado
+            </Badge>
+          </div>
         </CardHeader>
-        <CardContent className="space-y-4 p-4">
+        <CardContent className="space-y-6">
           {diaQ.isLoading ? (
-            <Skeleton className="h-32 w-full" />
+            <Skeleton className="h-40 w-full rounded-xl" />
           ) : !diaQ.data ? (
-            <p className="text-sm text-muted-foreground">Selecciona una sucursal.</p>
+            <p className="text-sm text-muted-foreground">Selecciona una sucursal para ver el cierre.</p>
           ) : (
             <>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-                <CajaItem label="Total" value={diaQ.data.resumen_caja.total_dia} accent />
-                <CajaItem label="Efectivo"      value={diaQ.data.resumen_caja.efectivo} />
-                <CajaItem label="Nequi"         value={diaQ.data.resumen_caja.nequi} />
-                <CajaItem label="Daviplata"     value={diaQ.data.resumen_caja.daviplata} />
-                <CajaItem label="Tarjeta"       value={diaQ.data.resumen_caja.tarjeta} />
-                <CajaItem label="Transferencia" value={diaQ.data.resumen_caja.transferencia} />
+              {/* Tarjetas de método */}
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+                <CajaCard label="Total Día" value={diaQ.data.resumen_caja.total_dia} accent />
+                <CajaCard label="Efectivo" value={diaQ.data.resumen_caja.efectivo} />
+                <CajaCard label="Nequi" value={diaQ.data.resumen_caja.nequi} />
+                <CajaCard label="Daviplata" value={diaQ.data.resumen_caja.daviplata} />
+                <CajaCard label="Tarjeta" value={diaQ.data.resumen_caja.tarjeta} />
+                <CajaCard label="Transferencia" value={diaQ.data.resumen_caja.transferencia} />
               </div>
 
+              {/* Detalle por producto */}
               {diaQ.data.productos.length > 0 ? (
-                <div className="overflow-x-auto rounded-md border">
+                <div className="overflow-x-auto rounded-xl border">
                   <table className="w-full text-sm">
-                    <thead className="bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
+                    <thead className="bg-muted/50 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">
                       <tr>
-                        <th className="px-3 py-2">Producto</th>
-                        <th className="px-3 py-2 text-right">Cantidad</th>
-                        <th className="px-3 py-2 text-right">Ingresos</th>
+                        <th className="px-4 py-3">Producto</th>
+                        <th className="px-4 py-3 text-right">Cantidad Vendida</th>
+                        <th className="px-4 py-3 text-right">Total Ingresos</th>
                       </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y">
                       {diaQ.data.productos.map((p, i) => (
-                        <tr key={`${p.producto_id ?? i}`} className="border-t">
-                          <td className="px-3 py-2 font-medium">{p.producto_nombre}</td>
-                          <td className="px-3 py-2 text-right">{formatNumber(p.cantidad_total, 3)}</td>
-                          <td className="px-3 py-2 text-right">{formatCurrency(p.total_ingresos)}</td>
+                        <tr key={`${p.producto_id ?? i}`} className="hover:bg-muted/30 transition-colors">
+                          <td className="px-4 py-3 font-semibold text-foreground">{p.producto_nombre}</td>
+                          <td className="px-4 py-3 text-right font-medium">{formatNumber(p.cantidad_total, 3)} u.</td>
+                          <td className="px-4 py-3 text-right font-bold text-primary">{formatCurrency(p.total_ingresos)}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">Sin ventas registradas.</p>
+                <p className="text-sm text-muted-foreground">Sin ventas registradas en esta fecha.</p>
               )}
             </>
           )}
@@ -380,17 +409,17 @@ function KpiCard({
   accent?: "primary";
 }) {
   return (
-    <Card>
-      <CardContent className="flex items-center gap-3 p-4">
-        <div className={`rounded-md bg-muted p-2 ${accent === "primary" ? "text-primary" : "text-muted-foreground"}`}>
-          <Icon className="h-5 w-5" />
+    <Card className="transition-all hover:shadow-md">
+      <CardContent className="flex items-center gap-4 p-5">
+        <div className={`rounded-xl p-3 ${accent === "primary" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+          <Icon className="h-6 w-6" />
         </div>
         <div className="min-w-0">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{label}</p>
           {loading ? (
-            <Skeleton className="mt-1 h-6 w-24" />
+            <Skeleton className="mt-1 h-7 w-28" />
           ) : (
-            <p className="text-xl font-semibold">{value}</p>
+            <p className="text-2xl font-black tracking-tight">{value}</p>
           )}
         </div>
       </CardContent>
@@ -398,20 +427,20 @@ function KpiCard({
   );
 }
 
-function CajaItem({ label, value, accent }: { label: string; value: number; accent?: boolean }) {
+function CajaCard({ label, value, accent }: { label: string; value: number; accent?: boolean }) {
   return (
-    <div className={`rounded-md border p-3 ${accent ? "border-primary/40 bg-primary/5" : ""}`}>
-      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className={`text-base font-semibold ${accent ? "text-primary" : ""}`}>
+    <div className={`rounded-xl border p-4 transition-all ${accent ? "border-primary bg-primary/5 shadow-sm" : "bg-card"}`}>
+      <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className={`text-lg font-black mt-1 ${accent ? "text-primary" : "text-foreground"}`}>
         {formatCurrency(value)}
       </p>
     </div>
   );
 }
 
-function EmptyChart({ label }: { label: string }) {
+function EmptyState({ label }: { label: string }) {
   return (
-    <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+    <div className="flex h-full items-center justify-center text-sm font-medium text-muted-foreground">
       {label}
     </div>
   );

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -13,6 +14,8 @@ import {
   ShoppingCart,
   Users,
   LayoutDashboard,
+  ChevronDown,
+  ChevronRight,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -25,51 +28,99 @@ import type { Rol } from "@/lib/api/types";
 
 export interface NavItem {
   label: string;
-  href:  string;
-  icon:  LucideIcon;
-  roles?: Rol[]; // Si se omite, todos los roles autenticados
+  href: string;
+  icon: LucideIcon;
+  roles?: Rol[];
 }
 
-export const NAV_ITEMS: NavItem[] = [
-  { label: "Dashboard",  href: "/dashboard",  icon: Home },
-  { label: "POS",        href: "/pos",        icon: ShoppingCart },
-  { label: "Mesas",      href: "/mesas",      icon: LayoutDashboard,
-    roles: ["owner", "manager", "super_admin", "cajero"] },
-  { label: "Inventario", href: "/inventario", icon: Boxes,
-    roles: ["owner", "manager", "inventario", "super_admin"] },
-  { label: "Productos",  href: "/productos",  icon: Package,
-    roles: ["owner", "manager", "inventario", "super_admin"] },
-  { label: "Reportes",   href: "/reportes",   icon: ChartArea,
-    roles: ["owner", "manager", "super_admin"] },
-  { label: "Inteligencia", href: "/ml",       icon: Brain,
-    roles: ["owner", "manager", "super_admin"] },
-  { label: "Equipo",     href: "/usuarios",   icon: Users,
-    roles: ["owner", "manager", "super_admin"] },
-  { label: "Branding",   href: "/branding",   icon: Palette,
-    roles: ["owner", "super_admin"] },
+export interface NavGroup {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+  items: NavItem[];
+  roles?: Rol[];
+}
+
+export const NAV_GROUPS: NavGroup[] = [
+  {
+    id: "analitica",
+    label: "Analítica & Control",
+    icon: ChartArea,
+    items: [
+      { label: "Dashboard", href: "/dashboard", icon: Home },
+      { label: "Reportes", href: "/reportes", icon: ChartArea, roles: ["owner", "manager", "super_admin"] },
+      { label: "Orion Intelligence", href: "/ml", icon: Brain, roles: ["owner", "manager", "super_admin"] },
+    ],
+  },
+  {
+    id: "operacion",
+    label: "Ventas & Operación",
+    icon: ShoppingCart,
+    items: [
+      { label: "Punto de Venta", href: "/pos", icon: ShoppingCart },
+      { label: "Gestión de Mesas", href: "/mesas", icon: LayoutDashboard, roles: ["owner", "manager", "super_admin", "cajero"] },
+    ],
+  },
+  {
+    id: "catalogo",
+    label: "Inventario & Menú",
+    icon: Boxes,
+    items: [
+      { label: "Productos & Servicios", href: "/productos", icon: Package, roles: ["owner", "manager", "inventario", "super_admin"] },
+      { label: "Control de Inventario", href: "/inventario", icon: Boxes, roles: ["owner", "manager", "inventario", "super_admin"] },
+    ],
+  },
+  {
+    id: "admin",
+    label: "Administración",
+    icon: Users,
+    items: [
+      { label: "Equipo de Trabajo", href: "/usuarios", icon: Users, roles: ["owner", "manager", "super_admin"] },
+      { label: "Personalización", href: "/branding", icon: Palette, roles: ["owner", "super_admin"] },
+    ],
+  },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
-  const user     = useAuthStore((s) => s.user);
-  const logout   = useAuthStore((s) => s.logout);
+  const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
   const branding = useBrandingStore((s) => s.branding);
 
-  const visibleItems = NAV_ITEMS.filter(
-    (item) => !item.roles || (user && item.roles.includes(user.rol))
-  );
+  // Auto-expand group that contains active path
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = {};
+    NAV_GROUPS.forEach((group) => {
+      const hasActive = group.items.some(
+        (item) => pathname === item.href || pathname?.startsWith(item.href + "/")
+      );
+      initial[group.id] = hasActive || group.id === "analitica" || group.id === "operacion";
+    });
+    return initial;
+  });
+
+  useEffect(() => {
+    NAV_GROUPS.forEach((group) => {
+      const hasActive = group.items.some(
+        (item) => pathname === item.href || pathname?.startsWith(item.href + "/")
+      );
+      if (hasActive) {
+        setOpenGroups((prev) => ({ ...prev, [group.id]: true }));
+      }
+    });
+  }, [pathname]);
+
+  const toggleGroup = (groupId: string) => {
+    setOpenGroups((prev) => ({ ...prev, [groupId]: !prev[groupId] }));
+  };
 
   return (
-    <aside className="hidden w-64 flex-col border-r bg-card md:flex">
-      {/* Logo + nombre del tenant (white-label) */}
+    <aside className="hidden w-64 flex-col border-r bg-card md:flex select-none">
+      {/* Header / Tenant Logo */}
       <div className="flex h-16 items-center gap-3 border-b px-5">
-        <OrionLogo
-          variant="mark"
-          size="md"
-          tenantLogoUrl={branding?.logo_url}
-        />
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold">
+        <OrionLogo variant="mark" size="md" tenantLogoUrl={branding?.logo_url} />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-bold tracking-tight">
             {branding?.nombre_comercial || "Orion POS"}
           </p>
           <p className="truncate text-xs text-muted-foreground capitalize">
@@ -78,49 +129,97 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-        {visibleItems.map((item) => {
-          const Icon   = item.icon;
-          const active = pathname === item.href || pathname?.startsWith(item.href + "/");
+      {/* Dropdown Navigation Menu */}
+      <nav className="flex-1 space-y-2 overflow-y-auto p-3">
+        {NAV_GROUPS.map((group) => {
+          // Filter items by user role
+          const visibleItems = group.items.filter(
+            (item) => !item.roles || (user && item.roles.includes(user.rol))
+          );
+
+          if (visibleItems.length === 0) return null;
+
+          const isGroupActive = visibleItems.some(
+            (item) => pathname === item.href || pathname?.startsWith(item.href + "/")
+          );
+          const isOpen = openGroups[group.id] ?? false;
+          const GroupIcon = group.icon;
+
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                active
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+            <div key={group.id} className="space-y-1">
+              {/* Group Header Button (Dropdown Trigger) */}
+              <button
+                type="button"
+                onClick={() => toggleGroup(group.id)}
+                className={cn(
+                  "flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wider transition-colors",
+                  isGroupActive
+                    ? "text-primary bg-primary/5"
+                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                )}
+              >
+                <div className="flex items-center gap-2">
+                  <GroupIcon className="h-4 w-4" />
+                  <span>{group.label}</span>
+                </div>
+                {isOpen ? (
+                  <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200" />
+                ) : (
+                  <ChevronRight className="h-3.5 w-3.5 transition-transform duration-200" />
+                )}
+              </button>
+
+              {/* Sub-menu Dropdown List */}
+              {isOpen && (
+                <div className="ml-3 space-y-0.5 border-l border-border/50 pl-2">
+                  {visibleItems.map((item) => {
+                    const ItemIcon = item.icon;
+                    const active =
+                      pathname === item.href || pathname?.startsWith(item.href + "/");
+
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className={cn(
+                          "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-all duration-150",
+                          active
+                            ? "bg-primary text-primary-foreground font-semibold shadow-sm"
+                            : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                        )}
+                      >
+                        <ItemIcon className="h-4 w-4 shrink-0" />
+                        <span className="truncate">{item.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
               )}
-            >
-              <Icon className="h-4 w-4" />
-              {item.label}
-            </Link>
+            </div>
           );
         })}
       </nav>
 
       <Separator />
 
-      {/* User & logout */}
+      {/* User Info & Logout */}
       <div className="space-y-2 p-3">
-        <div className="flex items-center gap-2 rounded-md px-2 py-1.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
+        <div className="flex items-center gap-3 rounded-lg border bg-muted/30 px-3 py-2">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full gradient-orion text-sm font-bold text-white shadow-sm">
             {(user?.nombre || "U").charAt(0).toUpperCase()}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-medium">{user?.nombre || "Usuario"}</p>
-            <p className="truncate text-xs text-muted-foreground capitalize">{user?.rol}</p>
+            <p className="truncate text-xs font-bold text-foreground">{user?.nombre || "Usuario"}</p>
+            <p className="truncate text-[10px] text-muted-foreground capitalize font-medium">{user?.rol}</p>
           </div>
         </div>
         <Button
           variant="ghost"
           size="sm"
-          className="w-full justify-start"
+          className="w-full justify-start text-xs text-muted-foreground hover:text-destructive"
           onClick={() => logout()}
         >
-          <LogOut className="h-4 w-4" />
+          <LogOut className="mr-2 h-4 w-4" />
           Cerrar sesión
         </Button>
       </div>
