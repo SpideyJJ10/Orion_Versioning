@@ -449,6 +449,7 @@ function RestockPanel({
                 <th className="px-4 py-3 text-right">Días cobertura</th>
                 <th className="px-4 py-3 text-right">Cantidad sugerida</th>
                 <th className="px-4 py-3">Urgencia</th>
+                <th className="px-4 py-3 text-right">Acción</th>
               </tr>
             </thead>
             <tbody>
@@ -471,6 +472,24 @@ function RestockPanel({
                       <Zap className="h-3 w-3" />
                       {s.urgencia}
                     </span>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        const text = `Hola proveedor, necesito pedir ${s.cantidad_sugerida} unidades de ${s.producto_nombre}`;
+                        const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+                        try {
+                          window.open(url, "_blank");
+                          navigator.clipboard.writeText(text); // fallback just in case
+                        } catch (e) {
+                          navigator.clipboard.writeText(text);
+                        }
+                      }}
+                    >
+                      Generar Pedido
+                    </Button>
                   </td>
                 </tr>
               ))}

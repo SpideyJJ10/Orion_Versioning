@@ -356,15 +356,15 @@ export default function PosPage() {
                 )}
 
                 <Button
-                  className="w-full"
+                  className="w-full h-20 text-2xl font-black shadow-xl gradient-orion text-white active:scale-[0.98] transition-transform rounded-xl"
                   size="lg"
                   disabled={cart.items.length === 0 || crearOrden.isPending}
                   onClick={() => setCheckoutOpen(true)}
                 >
                   {crearOrden.isPending ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="mr-3 h-8 w-8 animate-spin" />
                   ) : (
-                    <ReceiptIcon className="mr-2 h-4 w-4" />
+                    <ReceiptIcon className="mr-3 h-8 w-8" />
                   )}
                   Cobrar {formatCurrency(total)}
                 </Button>

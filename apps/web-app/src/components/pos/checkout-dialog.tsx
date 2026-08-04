@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Numpad } from "@/components/ui/numpad";
 import {
   Select,
   SelectContent,
@@ -146,32 +147,66 @@ export function CheckoutDialog({ open, onOpenChange, onConfirm, isPending }: Che
 
         {/* ── Inputs de efectivo / mixto ── */}
         {metodo_pago === "Efectivo" && (
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label htmlFor="efectivo">Efectivo recibido</Label>
-              <Input
-                id="efectivo"
-                type="number"
-                inputMode="decimal"
-                step="100"
-                min={0}
-                value={efectivo_recibido ?? ""}
-                onChange={(e) =>
-                  setEfectivoRecibido(e.target.value === "" ? null : Number(e.target.value))
-                }
-                className={cn(efectivoFaltante && "border-destructive")}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label>Cambio</Label>
-              <div className={cn(
-                "flex h-9 items-center rounded-md border bg-muted/40 px-3 text-sm font-semibold",
-                efectivoFaltante && "text-destructive",
-              )}>
-                {efectivoFaltante
-                  ? `Faltan ${formatCurrency(tot - (efectivo_recibido ?? 0))}`
-                  : formatCurrency(ch)}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label>Efectivo recibido</Label>
+                {/* Botones rápidos */}
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs px-2"
+                    onClick={() => setEfectivoRecibido(tot)}
+                  >
+                    Exacto
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs px-2"
+                    onClick={() => setEfectivoRecibido(50000)}
+                  >
+                    $50k
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs px-2"
+                    onClick={() => setEfectivoRecibido(100000)}
+                  >
+                    $100k
+                  </Button>
+                </div>
               </div>
+              <div className={cn(
+                "flex h-12 items-center rounded-md border px-4 text-xl font-bold bg-background",
+                efectivoFaltante ? "border-destructive text-destructive" : "text-foreground"
+              )}>
+                {efectivo_recibido !== null ? formatCurrency(efectivo_recibido) : "$0"}
+              </div>
+              <div className="space-y-1 mt-2">
+                <Label>Cambio a devolver</Label>
+                <div className={cn(
+                  "flex h-14 items-center rounded-xl border bg-muted/40 px-4 text-2xl font-black",
+                  efectivoFaltante ? "text-destructive" : "text-success bg-success/10 border-success/30",
+                )}>
+                  {efectivoFaltante
+                    ? `Faltan ${formatCurrency(tot - (efectivo_recibido ?? 0))}`
+                    : formatCurrency(ch)}
+                </div>
+              </div>
+            </div>
+            
+            {/* Numpad Oculto en desktop muy ancho, visible en táctil */}
+            <div className="mt-2 md:mt-0">
+              <Numpad
+                value={efectivo_recibido !== null ? efectivo_recibido.toString() : ""}
+                onChange={(val) => setEfectivoRecibido(val === "" ? null : Number(val))}
+              />
             </div>
           </div>
         )}
@@ -288,12 +323,17 @@ export function CheckoutDialog({ open, onOpenChange, onConfirm, isPending }: Che
           </div>
         </div>
 
-        <DialogFooter className="gap-2 sm:justify-between">
-          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isPending}>
+        <DialogFooter className="gap-2 sm:justify-between pt-4 border-t">
+          <Button variant="ghost" size="lg" onClick={() => onOpenChange(false)} disabled={isPending}>
             Cancelar
           </Button>
-          <Button onClick={onConfirm} disabled={!canConfirm} className="min-w-32">
-            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          <Button 
+            size="lg" 
+            onClick={onConfirm} 
+            disabled={!canConfirm} 
+            className="min-w-40 h-14 text-lg font-bold shadow-lg transition-transform active:scale-95"
+          >
+            {isPending && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
             Cobrar {formatCurrency(tot)}
           </Button>
         </DialogFooter>

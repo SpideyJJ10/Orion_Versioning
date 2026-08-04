@@ -72,6 +72,43 @@
     --ring: 271 91% 65%;
   }
 
+  /* Orion Adaptive Design Tokens (Niches) */
+  .theme-restaurante {
+    /* Nicho Gastronomía / Bares (Cálido, apetecible, alto contraste nocturno) */
+    --background: 222 47% 11%;
+    --foreground: 0 0% 98%;
+    --card: 222 47% 15%;
+    --card-foreground: 0 0% 98%;
+    --primary: 25 95% 53%; /* Naranja Fuego (#f97316) */
+    --primary-foreground: 0 0% 100%;
+    --accent: 142 70% 45%; /* Verde Éxito Cobro */
+    --ring: 25 95% 53%;
+  }
+
+  .theme-barberia {
+    /* Nicho Barbería / Estética (Elegante, sobrio, moderno) */
+    --background: 240 6% 10%;
+    --foreground: 0 0% 98%;
+    --card: 240 6% 14%;
+    --card-foreground: 0 0% 98%;
+    --primary: 292 84% 61%; /* Magenta Neón (#d946ef) */
+    --primary-foreground: 0 0% 100%;
+    --accent: 188 86% 53%; /* Cyan */
+    --ring: 292 84% 61%;
+  }
+
+  .theme-retail {
+    /* Nicho Retail / Farmacia (Limpio, alta densidad de información, contraste diurno) */
+    --background: 210 40% 98%; /* f8fafc */
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --primary: 221 83% 53%; /* Azul Corporativo (#2563eb) */
+    --primary-foreground: 0 0% 100%;
+    --accent: 142 76% 36%;
+    --ring: 221 83% 53%;
+  }
+
   * {
     @apply border-border;
   }

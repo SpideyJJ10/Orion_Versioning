@@ -115,7 +115,7 @@ def crear_orden(
                 Producto.tenant_id   == user["tenant_id"],
                 Producto.sucursal_id == data.sucursal_id,
                 Producto.activo      == True,
-            ).first()
+            ).with_for_update().first()
             if not producto:
                 raise HTTPException(
                     status_code=404,

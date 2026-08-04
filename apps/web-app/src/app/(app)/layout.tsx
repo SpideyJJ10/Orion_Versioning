@@ -1,5 +1,6 @@
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { Sidebar } from "@/components/layout/sidebar";
+import { CopilotWidget } from "@/components/copilot/copilot-widget";
 
 /**
  * Layout protegido: rodea todas las páginas en `/(app)/*`.
@@ -19,6 +20,7 @@ export default function AppLayout({
         <main className="flex flex-1 flex-col overflow-hidden">
           <div className="flex-1 overflow-y-auto">{children}</div>
         </main>
+        <CopilotWidget />
       </div>
     </AuthGuard>
   );

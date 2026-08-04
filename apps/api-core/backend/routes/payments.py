@@ -4,7 +4,6 @@ from __future__ import annotations
 import os
 from typing import Literal
 
-import stripe
 from fastapi import APIRouter, Body, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -16,7 +15,12 @@ from backend.models.orm import Tenant
 
 router = APIRouter(prefix="/api/v3/payments", tags=["Payments"])
 
-stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
+try:
+    import stripe
+    stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
+except ImportError:
+    stripe = None  # type: ignore
+
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
 
 PLAN_PRICES = {

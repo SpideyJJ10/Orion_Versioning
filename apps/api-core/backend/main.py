@@ -32,6 +32,7 @@ from backend.routes import (
     auth_v3,
     branding,
     categorias,
+    copilot,
     inventario,
     ml,
     onboarding,
@@ -46,6 +47,7 @@ from backend.routes import (
     payments,
     mesas,
     oai,
+    copilot,
 )
 
 
@@ -227,6 +229,7 @@ app.include_router(ai.router)
 app.include_router(payments.router)
 app.include_router(mesas.router)
 app.include_router(oai.router)
+app.include_router(copilot.router)
 
 
 # ─────────────────────────────────────────────────────────────────────────

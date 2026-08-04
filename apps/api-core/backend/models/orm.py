@@ -185,7 +185,7 @@ class Mesa(Base):
     capacidad   = Column(Integer, default=4, nullable=False)             # comensales máximos
     estado      = Column(String,  default="libre", nullable=False,       # libre|ocupada|reservada|cuenta_pedida
                          index=True)
-    orden_id    = Column(String,  ForeignKey("ordenes.id", ondelete="SET NULL"), nullable=True)
+    orden_id    = Column(String,  ForeignKey("ordenes.id", ondelete="SET NULL"), nullable=True, index=True)
     notas       = Column(String,  nullable=True)                         # notas del mesero
     activo      = Column(Boolean, default=True)
     creado_en   = Column(DateTime(timezone=True), default=_utcnow)
@@ -213,7 +213,7 @@ class Orden(Base):
     metodo_pago_extra = Column(String, nullable=True)  # cuando hay pago mixto (json {metodo:monto})
     cliente_nombre = Column(String, nullable=True)
     notas       = Column(Text,    nullable=True)
-    usuario_id  = Column(Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
+    usuario_id  = Column(Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True, index=True)
     anulada     = Column(Boolean,  default=False)
     
     # ── Facturación Electrónica (DIAN) ──
@@ -270,7 +270,7 @@ class MovimientoInventario(Base):
     motivo       = Column(String,  nullable=True)
     referencia_id = Column(String, nullable=True, index=True)  # p.ej. orden_id, devolucion_id
     usuario_id   = Column(Integer, ForeignKey("usuarios.id", ondelete="SET NULL"),
-                          nullable=True)
+                          nullable=True, index=True)
     fecha        = Column(DateTime(timezone=True), default=_utcnow, index=True)
 
     producto = relationship("Producto", back_populates="movimientos")

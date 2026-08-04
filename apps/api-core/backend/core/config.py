@@ -1,39 +1,38 @@
 """
-Configuración cargada desde el entorno (.env en la raíz del proyecto).
-"""
-from __future__ import annotations
+backend/core/config.py — Centralized configuration parsing with dev warnings.
 
+Loads environment variables with sensible defaults for dev while raising
+explicit warnings/errors if critical security configuration is missing.
+"""
 import os
-import secrets
+import sys
 import warnings
+
+ENV = os.getenv("ENV", "dev").lower()
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 from pathlib import Path
 
-from dotenv import load_dotenv
-
-load_dotenv()
-
-# Raíz del repo (directorio que contiene /backend y /frontend)
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-
+APP_NAME = "Orion API"
+APP_VERSION = "3.1.0"
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./tizon.db")
-ENV = os.getenv("ENV", "dev").lower()
 
-# ── Security — fail loudly if defaults are used ──────────────────────────
-SECRET_KEY = os.getenv("SECRET_KEY", "")
-if not SECRET_KEY or SECRET_KEY.startswith("cambia"):
+SECRET_KEY = os.getenv("SECRET_KEY", "").strip()
+if not SECRET_KEY or SECRET_KEY == "change-me-to-a-32+-char-random-string":
     if ENV in {"prod", "production"}:
-        raise RuntimeError("SECRET_KEY es obligatorio en produccion.")
-    SECRET_KEY = "dev_fallback_secret_key_for_orion_api_only"
+        raise RuntimeError("SECRET_KEY seguro es obligatorio en producción.")
     warnings.warn(
-        "⚠️  SECRET_KEY no configurado. Se usó una clave estática para desarrollo. "
-        "Configura SECRET_KEY en .env para producción.",
+        "⚠️  SECRET_KEY no configurado o inseguro. "
+        "Configura SECRET_KEY en .env antes de desplegar.",
         stacklevel=2,
     )
+    if not SECRET_KEY:
+        SECRET_KEY = "dev-insecure-key-do-not-use-in-production-change-me"
 
 ADMIN_PIN = os.getenv("ADMIN_PIN", "")
 if not ADMIN_PIN or ADMIN_PIN == "1234":
     if ENV in {"prod", "production"}:
-        raise RuntimeError("ADMIN_PIN seguro es obligatorio en produccion.")
+        raise RuntimeError("ADMIN_PIN seguro es obligatorio en producción.")
     warnings.warn(
         "⚠️  ADMIN_PIN no configurado o es '1234'. "
         "Cámbialo en .env antes de producción.",
@@ -47,20 +46,14 @@ CORS_ORIGIN_REGEX = os.getenv("CORS_ORIGIN_REGEX", "").strip() or None
 
 
 def cors_origins() -> list[str]:
-    """Parse CORS_ORIGINS env into a list. Strict validation lives in
-    `backend/core/security.py::strict_cors_origins` (used in production)."""
+    """Parse CORS_ORIGINS env into a list. Rejects wildcard in production."""
     if not CORS_ORIGINS_STR or CORS_ORIGINS_STR.strip() == "*":
+        if ENV in {"prod", "production"}:
+            raise RuntimeError("CORS_ORIGINS seguro es obligatorio en producción (no '*' ni vacío).")
         return ["*"]
     return [o.strip().rstrip("/") for o in CORS_ORIGINS_STR.split(",") if o.strip()]
 
 
 def cors_origin_regex() -> str | None:
-    """Optional regex for dynamic origins (e.g. Vercel preview deploys).
-
-    Example: ``^https://orion-pos-.*\\.vercel\\.app$`` matches all preview
-    deployments under the `orion-pos` Vercel project. The regex is anchored
-    with ``^...$`` so partial matches are rejected.
-
-    Returns ``None`` if `CORS_ORIGIN_REGEX` is not set.
-    """
+    """Optional regex for dynamic origins (e.g. Vercel preview deploys)."""
     return CORS_ORIGIN_REGEX
