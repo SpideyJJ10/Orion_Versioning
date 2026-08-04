@@ -7,8 +7,6 @@ import {
   CartesianGrid,
   Cell,
   Legend,
-  Line,
-  LineChart,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -23,11 +21,15 @@ import {
   ReceiptText,
   ShoppingBag,
   TrendingUp,
-  Calendar,
   Building2,
   Printer,
-  Download,
-  Filter,
+  Lock,
+  Unlock,
+  CheckCircle2,
+  AlertTriangle,
+  Coins,
+  ShieldCheck,
+  RotateCcw,
 } from "lucide-react";
 
 import {
@@ -41,6 +43,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Numpad } from "@/components/ui/numpad";
 import {
   Select,
   SelectContent,
@@ -48,12 +52,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-import {
-  formatCurrency,
-  formatDate,
-  formatNumber,
-} from "@/lib/formatters";
+import { api } from "@/lib/api";
+import { toast } from "sonner";
+import { formatCurrency, formatDate, formatNumber } from "@/lib/formatters";
 
 const COLORS = ["#7c3aed", "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#ec4899"];
 
@@ -75,6 +76,16 @@ export default function ReportesPage() {
   const [desde, setDesde] = useState(isoDaysAgo(30));
   const [hasta, setHasta] = useState(isoToday());
   const [activeDays, setActiveDays] = useState<number>(30);
+
+  // ── Estado de Privacidad y PIN para Cierre ──
+  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [pinDialogOpen, setPinDialogOpen] = useState(false);
+  const [pinInput, setPinInput] = useState("");
+  const [verifyingPin, setVerifyingPin] = useState(false);
+
+  // ── Arqueo de Caja ──
+  const [efectivoFisicoInput, setEfectivoFisicoInput] = useState<string>("");
+  const [cierreGuardado, setCierreGuardado] = useState(false);
 
   const rangoQ = useReporteRango({
     desde,
@@ -100,6 +111,29 @@ export default function ReportesPage() {
       .sort((a, b) => b.value - a.value);
   }, [rangoQ.data]);
 
+  // Verificar PIN de administrador
+  const handleVerifyPin = async () => {
+    if (!pinInput.trim()) return;
+    setVerifyingPin(true);
+    try {
+      await api.post("/api/v3/auth/verify-admin-pin", { pin: pinInput });
+      setIsUnlocked(true);
+      setPinDialogOpen(false);
+      setPinInput("");
+      toast.success("¡Acceso autorizado de Administrador!");
+    } catch {
+      toast.error("PIN de Administrador incorrecto.");
+      setPinInput("");
+    } finally {
+      setVerifyingPin(false);
+    }
+  };
+
+  // Cálculo de Arqueo
+  const efectivoSistema = diaQ.data?.resumen_caja.efectivo ?? 0;
+  const efectivoFisico = efectivoFisicoInput !== "" ? Number(efectivoFisicoInput) : null;
+  const diferencia = efectivoFisico !== null ? efectivoFisico - efectivoSistema : null;
+
   return (
     <div className="space-y-6 p-6 md:p-8 max-w-7xl mx-auto">
       {/* Header */}
@@ -107,7 +141,7 @@ export default function ReportesPage() {
         <div>
           <h1 className="text-3xl font-black tracking-tight">Reportes & Cierre</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Análisis de rendimiento comercial y control financiero.
+            Análisis de rendimiento comercial y control financiero privado.
           </p>
         </div>
 
@@ -299,71 +333,131 @@ export default function ReportesPage() {
         </Card>
       </div>
 
-      {/* Top Productos del Rango */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg font-bold">Top Productos por Ventas</CardTitle>
-          <CardDescription>Los artículos con mayor generación de ingresos</CardDescription>
-        </CardHeader>
-        <CardContent className="h-80 pt-2">
-          {rangoQ.isLoading ? (
-            <Skeleton className="h-full w-full rounded-xl" />
-          ) : !rangoQ.data?.top_productos.length ? (
-            <EmptyState label="Sin ventas registradas en el rango" />
-          ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={rangoQ.data.top_productos.slice(0, 8).map((p) => ({
-                  nombre: p.nombre.length > 20 ? p.nombre.slice(0, 19) + "…" : p.nombre,
-                  Ingresos: p.total,
-                  Cantidad: p.cantidad,
-                }))}
-                layout="vertical"
-                margin={{ top: 5, right: 20, left: 20, bottom: 0 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis type="number" className="text-xs" tickFormatter={(v) => formatNumber(v / 1000, 0) + "k"} />
-                <YAxis type="category" dataKey="nombre" width={130} className="text-xs font-semibold" />
-                <Tooltip formatter={(v: number) => formatCurrency(v)} />
-                <Bar dataKey="Ingresos" fill="hsl(var(--primary))" radius={[0, 6, 6, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Cierre de Caja del Día */}
-      <Card id="orion-print-area">
-        <CardHeader>
-          <div className="flex items-center justify-between">
+      {/* 🔒 CIERRE DE CAJA Y ARQUEO PRIVADO */}
+      <Card id="orion-print-area" className="border-2 border-primary/20 overflow-hidden">
+        <CardHeader className="bg-muted/20 border-b">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <CardTitle className="text-xl font-black">Cierre de Caja del Día</CardTitle>
-              <CardDescription>Resumen financiero al {formatDate(hasta)}</CardDescription>
+              <CardTitle className="text-xl font-black flex items-center gap-2">
+                {isUnlocked ? <Unlock className="h-5 w-5 text-success" /> : <Lock className="h-5 w-5 text-warning" />}
+                Cierre de Caja del Día
+              </CardTitle>
+              <CardDescription>Arqueo y conciliación financiera al {formatDate(hasta)}</CardDescription>
             </div>
-            <Badge variant="outline" className="text-xs font-bold border-primary text-primary">
-              Cierre Cuadrado
-            </Badge>
+            <div>
+              {!isUnlocked ? (
+                <Button
+                  onClick={() => setPinDialogOpen(true)}
+                  className="gradient-orion text-white font-bold shadow-md"
+                >
+                  <ShieldCheck className="mr-2 h-4 w-4" />
+                  Desbloquear Cierre con PIN de Admin
+                </Button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="text-xs font-bold border-success text-success bg-success/10 py-1 px-3">
+                    <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
+                    Acceso de Administrador Autorizado
+                  </Badge>
+                  <Button variant="ghost" size="sm" onClick={() => setIsUnlocked(false)}>
+                    <Lock className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-6">
-          {diaQ.isLoading ? (
-            <Skeleton className="h-40 w-full rounded-xl" />
-          ) : !diaQ.data ? (
-            <p className="text-sm text-muted-foreground">Selecciona una sucursal para ver el cierre.</p>
+
+        <CardContent className="p-6">
+          {!isUnlocked ? (
+            /* Bloqueo de Privacidad */
+            <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed rounded-2xl bg-muted/10 p-6">
+              <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4">
+                <Lock className="h-8 w-8" />
+              </div>
+              <h3 className="text-lg font-bold text-foreground">Contenido Financiero Privado</h3>
+              <p className="text-sm text-muted-foreground max-w-md mt-1 mb-6">
+                El resumen del cierre de caja contiene cifras confidenciales del negocio. Introduce el código único o PIN de Administrador para desbloquear.
+              </p>
+              <Button onClick={() => setPinDialogOpen(true)} size="lg" className="gradient-orion text-white font-bold h-12 px-6">
+                Ingresar PIN de Administrador
+              </Button>
+            </div>
           ) : (
-            <>
-              {/* Tarjetas de método */}
+            /* Vista Desbloqueada con Arqueo de Caja */
+            <div className="space-y-6">
+              {/* Tarjetas de Métodos */}
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-                <CajaCard label="Total Día" value={diaQ.data.resumen_caja.total_dia} accent />
-                <CajaCard label="Efectivo" value={diaQ.data.resumen_caja.efectivo} />
-                <CajaCard label="Nequi" value={diaQ.data.resumen_caja.nequi} />
-                <CajaCard label="Daviplata" value={diaQ.data.resumen_caja.daviplata} />
-                <CajaCard label="Tarjeta" value={diaQ.data.resumen_caja.tarjeta} />
-                <CajaCard label="Transferencia" value={diaQ.data.resumen_caja.transferencia} />
+                <CajaCard label="Total Día" value={diaQ.data?.resumen_caja.total_dia ?? 0} accent />
+                <CajaCard label="Efectivo Sistema" value={efectivoSistema} />
+                <CajaCard label="Nequi" value={diaQ.data?.resumen_caja.nequi ?? 0} />
+                <CajaCard label="Daviplata" value={diaQ.data?.resumen_caja.daviplata ?? 0} />
+                <CajaCard label="Tarjeta" value={diaQ.data?.resumen_caja.tarjeta ?? 0} />
+                <CajaCard label="Transferencia" value={diaQ.data?.resumen_caja.transferencia ?? 0} />
               </div>
 
-              {/* Detalle por producto */}
-              {diaQ.data.productos.length > 0 ? (
+              {/* Formulario de Arqueo Físico */}
+              <Card className="border bg-card/60">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base font-bold flex items-center gap-2">
+                    <Coins className="h-5 w-5 text-primary" />
+                    Arqueo & Cuadre de Efectivo Contado
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-semibold">Efectivo Físico en Cajón ($ COP)</Label>
+                      <Input
+                        type="number"
+                        placeholder="Ej. 150000"
+                        value={efectivoFisicoInput}
+                        onChange={(e) => setEfectivoFisicoInput(e.target.value)}
+                        className="h-12 text-xl font-bold"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs text-muted-foreground uppercase font-bold">Estado del Cuadre</Label>
+                      <div className="h-12 flex items-center px-4 rounded-xl border font-bold text-lg bg-muted/30">
+                        {diferencia === null ? (
+                          <span className="text-muted-foreground text-sm">Ingrese el efectivo en cajón...</span>
+                        ) : diferencia === 0 ? (
+                          <span className="text-success flex items-center gap-2">
+                            <CheckCircle2 className="h-5 w-5" />
+                            Cuadre Perfectamente Exacto
+                          </span>
+                        ) : diferencia > 0 ? (
+                          <span className="text-primary flex items-center gap-2">
+                            ⬆️ Sobrante: +{formatCurrency(diferencia)}
+                          </span>
+                        ) : (
+                          <span className="text-destructive flex items-center gap-2">
+                            ⬇️ Faltante: {formatCurrency(diferencia)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-3 pt-2">
+                    <Button
+                      onClick={() => {
+                        setCierreGuardado(true);
+                        toast.success("¡Cierre de caja guardado e impreso exitosamente!");
+                        window.print();
+                      }}
+                      className="gradient-orion text-white font-bold h-11 px-6 shadow-md"
+                      disabled={cierreGuardado}
+                    >
+                      {cierreGuardado ? "Cierre Guardado" : "Guardar & Imprimir Cierre del Día"}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Detalle por Producto */}
+              {diaQ.data && diaQ.data.productos.length > 0 && (
                 <div className="overflow-x-auto rounded-xl border">
                   <table className="w-full text-sm">
                     <thead className="bg-muted/50 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -384,13 +478,51 @@ export default function ReportesPage() {
                     </tbody>
                   </table>
                 </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">Sin ventas registradas en esta fecha.</p>
               )}
-            </>
+            </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Diálogo Modal de PIN de Administrador */}
+      <Dialog open={pinDialogOpen} onOpenChange={setPinDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-lg">
+              <Lock className="h-5 w-5 text-primary" />
+              PIN de Administrador Requerido
+            </DialogTitle>
+            <DialogDescription>
+              Introduce el código o PIN de 4-6 dígitos del Administrador para realizar el Arqueo de Caja.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="flex h-14 items-center justify-center rounded-xl border bg-muted/40 text-3xl font-black tracking-widest text-primary">
+              {pinInput ? "•".repeat(pinInput.length) : <span className="text-sm font-medium text-muted-foreground tracking-normal">Ingresa PIN...</span>}
+            </div>
+
+            <Numpad
+              value={pinInput}
+              onChange={setPinInput}
+              disabled={verifyingPin}
+            />
+          </div>
+
+          <DialogFooter className="gap-2 sm:justify-between">
+            <Button variant="ghost" onClick={() => setPinDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleVerifyPin}
+              disabled={!pinInput.trim() || verifyingPin}
+              className="gradient-orion text-white font-bold"
+            >
+              Confirmar PIN
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1,17 +1,11 @@
 """
 routes/auth_v3.py — Endpoints de autenticación v3 con roles y refresh tokens.
-
-Endpoints:
-  POST /api/v3/auth/register    → Registra negocio (tenant) + usuario owner
-  POST /api/v3/auth/login       → Login con email+password (cualquier rol)
-  POST /api/v3/auth/login-pin   → Login rápido con PIN (cajeros)
-  POST /api/v3/auth/refresh     → Renueva access_token usando refresh_token
-  POST /api/v3/auth/logout      → Cliente debe descartar tokens (stateless)
-  GET  /api/v3/auth/me          → Info del usuario autenticado
 """
+import os
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from backend.auth_v3 import (
@@ -36,10 +30,6 @@ from backend.schemas import (
 )
 
 router = APIRouter(prefix="/api/v3/auth", tags=["Auth v3"])
-
-
-# ─────────────────────────────────────────────────────────────────────────
-#  REGISTRO DE NEGOCIO (crea Tenant + Branding + Onboarding + Usuario owner)
 # ─────────────────────────────────────────────────────────────────────────
 @router.post("/register", response_model=TokenPair, status_code=status.HTTP_201_CREATED)
 def registrar_negocio(data: RegisterV3Request, db: Session = Depends(get_db)):
@@ -221,6 +211,39 @@ def info_actual(user: dict = Depends(get_current_usuario), db: Session = Depends
         id=u.id, email=u.email, nombre=u.nombre, rol=u.rol,
         tenant_id=u.tenant_id, sucursal_id=u.sucursal_id,
     )
+
+
+class VerifyAdminPinRequest(BaseModel):
+    pin: str = Field(..., min_length=4, max_length=6)
+
+
+@router.post("/verify-admin-pin")
+def verificar_admin_pin(
+    data: VerifyAdminPinRequest,
+    user: dict = Depends(get_current_usuario),
+    db: Session = Depends(get_db),
+):
+    """Verifica si un PIN pertenece a un Administrador/Owner del tenant o al ADMIN_PIN global."""
+    admin_pin_env = os.getenv("ADMIN_PIN", "").strip()
+    if admin_pin_env and data.pin == admin_pin_env:
+        return {"ok": True}
+
+    match = (
+        db.query(Usuario)
+        .filter(
+            Usuario.tenant_id == user["tenant_id"],
+            Usuario.pin == data.pin,
+            Usuario.rol.in_(["owner", "manager", "super_admin"]),
+            Usuario.activo == True,  # noqa: E712
+        )
+        .first()
+    )
+    if not match:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="PIN de Administrador incorrecto.",
+        )
+    return {"ok": True}
 
 
 # ─────────────────────────────────────────────────────────────────────────
