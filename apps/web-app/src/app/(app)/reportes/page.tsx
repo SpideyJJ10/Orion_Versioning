@@ -37,6 +37,7 @@ import {
   useReporteDia,
   useSucursales,
 } from "@/lib/hooks/use-api";
+import { usePageTitle } from "@/lib/hooks/use-page-title";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
@@ -69,6 +70,8 @@ function isoDaysAgo(days: number): string {
 }
 
 export default function ReportesPage() {
+  usePageTitle("Reportes & Cierre");
+
   const { data: sucursales } = useSucursales();
   const [sucursalId, setSucursalId] = useState<string | undefined>();
   const effectiveSucursalId = sucursalId ?? sucursales?.[0]?.id;

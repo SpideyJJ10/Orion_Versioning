@@ -10,11 +10,12 @@ import {
   Brain,
   Package,
   ChevronRight,
-  Sparkles,
   BarChart3,
 } from "lucide-react";
 
 import { useReporteDiario, useInventarioAlertas, useSucursales } from "@/lib/hooks/use-api";
+import { usePageTitle } from "@/lib/hooks/use-page-title";
+import { OnboardingTour } from "@/components/dashboard/onboarding-tour";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -69,6 +70,8 @@ function KpiCard({ label, value, icon: Icon, loading, hint, trend, accent }: Kpi
 }
 
 export default function DashboardPage() {
+  usePageTitle("Dashboard");
+
   const { data: sucursales } = useSucursales();
   const { data: reporte, isLoading: loadingReporte } = useReporteDiario();
   const { data: alertas, isLoading: loadingAlertas } = useInventarioAlertas();
@@ -105,6 +108,11 @@ export default function DashboardPage() {
           </Button>
         </div>
       </div>
+
+      {/* Guía de Inicio Rápido / Tutorial Opcional */}
+      <section>
+        <OnboardingTour />
+      </section>
 
       {/* Grid de KPIs principales */}
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
